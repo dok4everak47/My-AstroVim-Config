@@ -57,6 +57,8 @@ return {
     mappings = {
       -- first key is the mode
       n = {
+        ["<leader>lv"] = { "<cmd>VenvSelect<cr>", desc = "选择虚拟环境" },
+        ["<leader>lc"] = { "<cmd>VenvSelectCached<cr>", desc = "选择缓存的虚拟环境" },
         -- second key is the lefthand side of the map
 
         -- navigate buffer tabs
