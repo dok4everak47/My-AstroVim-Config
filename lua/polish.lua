@@ -165,6 +165,44 @@ end
 --
 -- setup_fish_toggleterm()
 
+-- 增强缓冲区切换配置
+local function setup_buffer_navigation()
+  -- 基本缓冲区操作
+  vim.keymap.set("n", "<leader>bn", "<cmd>bn<CR>", { desc = "Next buffer" })
+  vim.keymap.set("n", "<leader>bp", "<cmd>bp<CR>", { desc = "Previous buffer" })
+  vim.keymap.set("n", "<leader>bd", "<cmd>bd<CR>", { desc = "Delete buffer" })
+  vim.keymap.set("n", "<leader>bD", "<cmd>bd!<CR>", { desc = "Force delete buffer" })
+
+  -- 快速切换到最近使用的缓冲区
+  vim.keymap.set("n", "<leader>bb", "<cmd>e #<CR>", { desc = "Switch to last buffer" })
+
+  -- 使用数字键快速切换缓冲区 (1-9)
+  for i = 1, 9 do
+    vim.keymap.set("n", "<leader>" .. i, function() vim.cmd("buffer " .. i) end, { desc = "Switch to buffer " .. i })
+  end
+
+  -- Alt + 方向键切换缓冲区
+  vim.keymap.set("n", "<A-Right>", "<cmd>bn<CR>", { desc = "Next buffer" })
+  vim.keymap.set("n", "<A-Left>", "<cmd>bp<CR>", { desc = "Previous buffer" })
+
+  -- 只在当前窗口的缓冲区中切换（忽略其他窗口的缓冲区）
+  vim.keymap.set(
+    "n",
+    "<leader>bh",
+    function() vim.cmd "bp | if &bt == 'nofile' | bp | endif" end,
+    { desc = "Previous buffer in window" }
+  )
+
+  vim.keymap.set(
+    "n",
+    "<leader>bl",
+    function() vim.cmd "bn | if &bt == 'nofile' | bn | endif" end,
+    { desc = "Next buffer in window" }
+  )
+end
+
+setup_buffer_navigation()
+
 setup_terminal_file_dir()
 
 setup_cpp_autosemicolon()
