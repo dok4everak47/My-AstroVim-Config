@@ -116,7 +116,7 @@ local function setup_terminal_file_dir()
 
     print("Opening " .. direction .. " terminal in file directory:", file_dir)
 
-    require("toggleterm").toggle(1, 20, file_dir, direction)
+    require("toggleterm").toggle(1, 100, file_dir, direction)
 
     -- 延迟发送 fish 命令
     vim.defer_fn(function()
@@ -146,24 +146,70 @@ local function setup_terminal_file_dir()
 end
 
 -- 针对 fish shell 的配置
--- local function setup_fish_toggleterm()
---   vim.keymap.set("n", "<leader>tf", function()
---     local current_dir = vim.fn.getcwd()
---
---     require("toggleterm").toggle(1, 100, current_dir, "float")
---
---     -- 延迟发送 fish 的 cd 命令
---     vim.defer_fn(function()
---       if vim.b.terminal_job_id then
---         -- fish shell 的 cd 命令
---         vim.fn.chansend(vim.b.terminal_job_id, "cd " .. vim.fn.shellescape(current_dir) .. "\n")
---         vim.fn.chansend(vim.b.terminal_job_id, "clear\n")
---       end
---     end, 200)
---   end, { desc = "Float terminal in current dir (fish)" })
--- end
---
--- setup_fish_toggleterm()
+local function setup_fish_toggleterm()
+  vim.keymap.set("n", "<leader>tf", function()
+    local current_dir = vim.fn.getcwd()
+
+    require("toggleterm").toggle(1, 100, current_dir, "float")
+
+    -- 延迟发送 fish 的 cd 命令
+    vim.defer_fn(function()
+      if vim.b.terminal_job_id then
+        -- fish shell 的 cd 命令
+        vim.fn.chansend(vim.b.terminal_job_id, "cd " .. vim.fn.shellescape(current_dir) .. "\n")
+        vim.fn.chansend(vim.b.terminal_job_id, "clear\n")
+      end
+    end, 200)
+  end, { desc = "Float terminal in current dir (fish)" })
+end
+
+-- 在打开终端时指定大小
+local function setup_terminal_with_sizes()
+  local function open_terminal(direction, size)
+    local current_file = vim.fn.expand "%:p"
+    local file_dir = vim.fn.fnamemodify(current_file, ":h")
+
+    if current_file == "" then file_dir = vim.fn.getcwd() end
+
+    require("toggleterm").toggle(size or 1, 100, file_dir, direction)
+
+    vim.defer_fn(function()
+      if vim.b.terminal_job_id then
+        vim.fn.chansend(vim.b.terminal_job_id, "cd " .. vim.fn.shellescape(file_dir) .. "\n")
+        vim.fn.chansend(vim.b.terminal_job_id, "clear\n")
+      end
+    end, 500)
+  end
+
+  -- 浮动终端 - 自定义大小
+  vim.keymap.set("n", "<leader>tf", function() open_terminal "float" end, { desc = "Float terminal (default size)" })
+
+  -- 水平终端 - 设置高度为 15 行
+  vim.keymap.set(
+    "n",
+    "<leader>th",
+    function() open_terminal("horizontal", 15) end,
+    { desc = "Horizontal terminal (15 lines)" }
+  )
+
+  -- 垂直终端 - 设置宽度为 80 列
+  vim.keymap.set(
+    "n",
+    "<leader>tv",
+    function() open_terminal("vertical", 80) end,
+    { desc = "Vertical terminal (80 columns)" }
+  )
+
+  -- 大号浮动终端
+  vim.keymap.set("n", "<leader>tF", function()
+    open_terminal "float"
+    -- 浮动终端大小在 float_opts 中设置
+  end, { desc = "Large float terminal" })
+end
+
+setup_terminal_with_sizes()
+
+setup_fish_toggleterm()
 
 setup_terminal_file_dir()
 
