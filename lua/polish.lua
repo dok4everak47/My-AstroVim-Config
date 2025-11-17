@@ -104,6 +104,69 @@ local function setup_cpp_autosemicolon()
   })
 end
 
+-- 使用当前文件所在目录打开终端（支持浮动和水平）
+local function setup_terminal_file_dir()
+  -- 通用的终端打开函数
+  local function open_terminal_in_file_dir(direction)
+    local current_file = vim.fn.expand "%:p"
+    local file_dir = vim.fn.fnamemodify(current_file, ":h")
+
+    -- 如果当前没有文件，使用工作目录
+    if current_file == "" then file_dir = vim.fn.getcwd() end
+
+    print("Opening " .. direction .. " terminal in file directory:", file_dir)
+
+    require("toggleterm").toggle(1, 100, file_dir, direction)
+
+    -- 延迟发送 fish 命令
+    vim.defer_fn(function()
+      if vim.b.terminal_job_id then
+        vim.fn.chansend(vim.b.terminal_job_id, "cd " .. vim.fn.shellescape(file_dir) .. "\n")
+        vim.fn.chansend(vim.b.terminal_job_id, "clear\n")
+        -- vim.fn.chansend(vim.b.terminal_job_id, "echo 'File: " .. vim.fn.expand('%:t') .. "'\n")
+      end
+    end, 500)
+  end
+
+  -- 浮动终端
+  vim.keymap.set(
+    "n",
+    "<leader>tf",
+    function() open_terminal_in_file_dir "float" end,
+    { desc = "Float terminal in file directory" }
+  )
+
+  -- 水平终端
+  vim.keymap.set(
+    "n",
+    "<leader>th",
+    function() open_terminal_in_file_dir "horizontal" end,
+    { desc = "Horizontal terminal in file directory" }
+  )
+end
+
+-- 针对 fish shell 的配置
+local function setup_fish_toggleterm()
+  vim.keymap.set("n", "<leader>tf", function()
+    local current_dir = vim.fn.getcwd()
+
+    require("toggleterm").toggle(1, 100, current_dir, "float")
+
+    -- 延迟发送 fish 的 cd 命令
+    vim.defer_fn(function()
+      if vim.b.terminal_job_id then
+        -- fish shell 的 cd 命令
+        vim.fn.chansend(vim.b.terminal_job_id, "cd " .. vim.fn.shellescape(current_dir) .. "\n")
+        vim.fn.chansend(vim.b.terminal_job_id, "clear\n")
+      end
+    end, 200)
+  end, { desc = "Float terminal in current dir (fish)" })
+end
+
+setup_fish_toggleterm()
+
+setup_terminal_file_dir()
+
 setup_cpp_autosemicolon()
 
 setup_cpp_indent()
