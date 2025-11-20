@@ -138,13 +138,13 @@ return {
             "██   ████   ████   ██ ██      ██",
           }, "\n"),
 
-          keys = {
-            {
-              key = "h",
-              action = function() vim.notify "Hello World!" end,
-              desc = "Say Hi",
-            },
-          },
+          -- keys = {
+          --   {
+          --     key = "h",
+          --     action = function() vim.notify "Hello World!" end,
+          --     desc = "Say Hi",
+          --   },
+          -- },
         },
       },
     },
