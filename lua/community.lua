@@ -13,4 +13,5 @@ return {
   { import = "astrocommunity.pack.cpp" },
   { import = "astrocommunity.colorscheme.cyberdream-nvim" },
   { import = "astrocommunity.git.mini-git" },
+  { import = "astrocommunity.colorscheme.catppuccin" },
 }
