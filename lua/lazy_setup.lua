@@ -1,4 +1,19 @@
 require("lazy").setup({
+
+    {
+    "neovim/nvim-lspconfig",
+    opts = {
+      servers = {
+        clangd = {
+          cmd = { "/run/current-system/sw/bin/clangd" },
+          capabilities = {
+            offsetEncoding = { "utf-16" },
+          },
+        },
+      },
+    },
+  },
+    
   {
     "AstroNvim/AstroNvim",
     version = "^5", -- Remove version tracking to elect for nightly AstroNvim
