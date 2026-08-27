@@ -61,6 +61,32 @@ local function setup_language_specific_execution()
   })
 end
 
+-- Elm 缩进：统一 4 个空格；不使用 smartindent，交给 Elm indentexpr
+local function setup_elm_indent()
+  vim.api.nvim_create_autocmd("FileType", {
+    pattern = "elm",
+    callback = function(args)
+      local buf = args.buf
+
+      vim.bo[buf].tabstop = 4 -- 一个 Tab 显示为 4 个空格宽度
+      vim.bo[buf].shiftwidth = 4 -- 回车换行/自动缩进使用 4 个空格
+      vim.bo[buf].softtabstop = 4 -- 按 Tab 键插入 4 个空格
+      vim.bo[buf].expandtab = true -- 使用空格而不是 Tab
+      vim.bo[buf].smartindent = false -- Elm 使用内置 indentexpr，避免冲突
+      vim.bo[buf].cindent = false
+      vim.bo[buf].copyindent = true -- 空行/延续缩进尽量复制上一级缩进
+      vim.bo[buf].preserveindent = true
+
+      -- 防止 guess-indent 根据已有文件内容把缩进改成 2 空格
+      vim.b[buf].guess_indent_skip = true
+      if package.loaded["guess-indent"] then
+        local config = require "guess-indent.config"
+        if not vim.tbl_contains(config.filetype_exclude, "elm") then table.insert(config.filetype_exclude, "elm") end
+      end
+    end,
+  })
+end
+
 -- 在 polish.lua 中添加 C++ 缩进配置
 local function setup_cpp_indent()
   vim.api.nvim_create_autocmd("FileType", {
@@ -77,7 +103,7 @@ local function setup_cpp_indent()
 
       -- 其他代码风格设置
       vim.bo[buf].textwidth = 80 -- 行宽限制
-      vim.wo.wrap = false -- 不自动换行
+      vim.wo.wrap = true -- 自动换行
     end,
   })
 end
@@ -209,7 +235,24 @@ setup_cpp_autosemicolon()
 
 setup_cpp_indent()
 
+setup_elm_indent()
+
 setup_language_specific_execution()
 
 -- 设置 jk 为退出 Insert 模式
-vim.keymap.set("i", "jk", "<Esc>", { noremap = true, silent = true })
+if vim.g.vscode then
+  -- VSCode Neovim 最简单的映射
+  vim.keymap.set("i", "jk", "<Esc>", { noremap = true, silent = true })
+else
+  -- 普通 Neovim 环境：退出并保存
+  vim.keymap.set("i", "jk", "<Esc>:w<CR>", { noremap = true, silent = true })
+end
+
+-- 设置清晰的光标形状：Insert 模式下用竖线，加粗避免被遮挡
+vim.opt.guicursor = "n-v-c:block,i:ver50,ci:ver50,ve:ver50,o:block,a:blinkon100"
+
+-- 打开 Aerial 大纲视图（当前文件函数大纲，快速跳转）
+vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<CR>", { desc = "Toggle Aerial outline" })
+-- VS Code Cmd+Shift+O 风格搜索当前文件函数符号
+vim.keymap.set("n", "<leader>fs", function() Snacks.picker.lsp_symbols() end, { desc = "Go to symbol in current file (VS Code Cmd+Shift+O)" })
+

@@ -44,7 +44,7 @@ return {
         number = true, -- sets vim.opt.number
         spell = false, -- sets vim.opt.spell
         signcolumn = "yes", -- sets vim.opt.signcolumn to yes
-        wrap = false, -- sets vim.opt.wrap
+        wrap = true, -- sets vim.opt.wrap
       },
       g = { -- vim.g.<key>
         -- configure global vim variables (vim.g)
@@ -59,6 +59,9 @@ return {
       n = {
         ["<leader>lv"] = { "<cmd>VenvSelect<cr>", desc = "选择虚拟环境" },
         ["<leader>lc"] = { "<cmd>VenvSelectCached<cr>", desc = "选择缓存的虚拟环境" },
+        -- Cmd+S / Ctrl+S 保存（BufWritePre 的 format_on_save 会自动跑 elm-format）
+        ["<D-s>"] = { "<Cmd>w<CR>", desc = "Save" },
+        ["<C-s>"] = { "<Cmd>w<CR>", desc = "Save" },
         -- second key is the lefthand side of the map
 
         -- navigate buffer tabs
@@ -81,6 +84,15 @@ return {
 
         -- setting a mapping to false will disable it
         -- ["<C-S>"] = false,
+      },
+      i = {
+        -- 插入模式下 Cmd+S / Ctrl+S：先存盘，命令执行完自动回到插入模式
+        ["<D-s>"] = { "<Cmd>w<CR>", desc = "Save" },
+        ["<C-s>"] = { "<Cmd>w<CR>", desc = "Save" },
+      },
+      v = {
+        ["<D-s>"] = { "<Cmd>w<CR>", desc = "Save" },
+        ["<C-s>"] = { "<Cmd>w<CR>", desc = "Save" },
       },
     },
   },

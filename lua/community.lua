@@ -11,6 +11,9 @@ return {
   -- import/override with your plugins folder
   { import = "astrocommunity.pack.python" },
   { import = "astrocommunity.pack.cpp" },
+  { import = "astrocommunity.pack.typescript" },
+  { import = "astrocommunity.pack.json" },
+  { import = "astrocommunity.pack.html-css" },
   { import = "astrocommunity.colorscheme.cyberdream-nvim" },
   { import = "astrocommunity.git.mini-git" },
   { import = "astrocommunity.colorscheme.catppuccin" },

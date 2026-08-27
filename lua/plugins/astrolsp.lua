@@ -5,6 +5,14 @@
 -- NOTE: We highly recommend setting up the Lua Language Server (`:LspInstall lua_ls`)
 --       as this provides autocomplete and documentation while editing
 
+-- 解析 nix-darwin 声明安装的 Elm 工具路径：
+-- 优先取 PATH 中的可执行文件，找不到时（如 GUI 启动的 nvim）回退到系统 profile
+local function elm_bin(name)
+  local path = vim.fn.exepath(name)
+  if path ~= "" then return path end
+  return "/nix/var/nix/profiles/system/sw/bin/" .. name
+end
+
 ---@type LazySpec
 return {
   "AstroNvim/astrolsp",
@@ -31,6 +39,7 @@ return {
       disabled = { -- disable formatting capabilities for the listed language servers
         -- disable lua_ls formatting capability if you want to use StyLua to format your lua code
         -- "lua_ls",
+        "elmls", -- Elm 格式化交给 none-ls 的 elm_format（独立二进制），避免双 formatter 冲突
       },
       timeout_ms = 1000, -- default format timeout
       -- filter = function(client) -- fully override the default formatting function
@@ -40,11 +49,21 @@ return {
     -- enable servers that you already have installed without mason
     servers = {
       -- "pyright"
+      "elmls", -- Elm LSP（nix-darwin 已声明安装，无需 Mason）
     },
     -- customize language server configuration options passed to `lspconfig`
     ---@diagnostic disable: missing-fields
     config = {
       -- clangd = { capabilities = { offsetEncoding = "utf-8" } },
+      elmls = {
+        init_options = {
+          -- 显式指定工具路径，即使 GUI 启动导致 PATH 缺少 nix profile 也能正常工作
+          elmPath = elm_bin "elm",
+          elmFormatPath = elm_bin "elm-format",
+          elmTestPath = elm_bin "elm-test-rs",
+          elmReviewPath = elm_bin "elm-review",
+        },
+      },
     },
     -- customize how language servers are attached
     handlers = {
@@ -54,6 +73,7 @@ return {
       -- the key is the server that is being setup with `lspconfig`
       -- rust_analyzer = false, -- setting a handler to false will disable the set up of that language server
       -- pyright = function(_, opts) require("lspconfig").pyright.setup(opts) end -- or a custom handler function can be passed
+      elmls = function(_, opts) require("lspconfig").elmls.setup(opts) end,
     },
     -- Configure buffer local auto commands to add when attaching a language server
     autocmds = {
@@ -81,10 +101,25 @@ return {
     mappings = {
       n = {
         -- a `cond` key can provided as the string of a server capability to be required to attach, or a function with `client` and `bufnr` parameters from the `on_attach` that returns a boolean
+        gd = {
+          function() vim.lsp.buf.definition() end,
+          desc = "Go to definition of current symbol",
+          cond = "textDocument/definition",
+        },
         gD = {
           function() vim.lsp.buf.declaration() end,
           desc = "Declaration of current symbol",
           cond = "textDocument/declaration",
+        },
+        gi = {
+          function() vim.lsp.buf.implementation() end,
+          desc = "Go to implementation of current symbol",
+          cond = "textDocument/implementation",
+        },
+        gr = {
+          function() vim.lsp.buf.references() end,
+          desc = "Go to references of current symbol",
+          cond = "textDocument/references",
         },
         ["<Leader>uY"] = {
           function() require("astrolsp.toggles").buffer_semantic_tokens() end,
