@@ -256,3 +256,81 @@ vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<CR>", { desc = "Toggle Aeria
 -- VS Code Cmd+Shift+O 风格搜索当前文件函数符号
 vim.keymap.set("n", "<leader>fs", function() Snacks.picker.lsp_symbols() end, { desc = "Go to symbol in current file (VS Code Cmd+Shift+O)" })
 
+-- 原生 Treesitter 函数文本对象（if/af）
+-- 不依赖 nvim-treesitter-textobjects，直接使用 vim.treesitter API
+-- 适用于所有有 treesitter parser 的语言（Python、C++、Lua、TS 等）
+local function setup_function_textobject()
+  -- 从光标位置向上查找函数节点，返回 0-indexed 范围 (sr, sc, er, ec)
+  local function get_function_range(outer)
+    local node = vim.treesitter.get_node()
+    if not node then return nil end
+
+    while node do
+      local t = node:type()
+      -- 匹配各种语言的函数/方法/构造函数节点
+      if t:match "function" or t:match "method" or t:match "constructor" then
+        local sr, sc, er, ec = node:range()
+        if not outer then
+          -- 内部：尝试找到函数体 block
+          for i = 0, node:named_child_count() - 1 do
+            local child = node:named_child(i)
+            if child then
+              local ct = child:type()
+              if ct:match "block" or ct:match "body" or ct == "suite" or ct == "compound_statement" then
+                sr, sc, er, ec = child:range()
+                break
+              end
+            end
+          end
+        end
+        return sr, sc, er, ec
+      end
+      node = node:parent()
+    end
+    return nil
+  end
+
+  local function select(outer)
+    local sr, sc, er, ec = get_function_range(outer)
+    if not sr then
+      vim.notify("No function at cursor", vim.log.levels.WARN)
+      return
+    end
+
+    -- node:range() 返回 0-indexed (sr, sc, er, ec)，ec 为排他（不含）
+    -- nvim_win_set_cursor 需要 1-indexed 行、0-indexed 列
+    local start_row = sr + 1
+    local start_col = sc
+
+    local end_row, end_col
+    if ec > 0 then
+      end_row = er + 1
+      end_col = ec - 1
+    else
+      -- ec == 0 表示范围结束在行首，最后一个字符在前一行末尾
+      end_row = er
+      end_col = math.max(#vim.fn.getline(er) - 1, 0)
+    end
+
+    -- 进入可视模式（如果当前不在）
+    -- 在 operator-pending 模式下，进入可视模式后挂起的 operator 会作用于选区
+    local mode = vim.api.nvim_get_mode().mode
+    if mode ~= "v" and mode ~= "V" and mode ~= "\x16" then
+      vim.cmd "normal! v"
+    end
+
+    -- 设置选区起点 -> 跳到另一端 -> 设置选区终点
+    vim.api.nvim_win_set_cursor(0, { start_row, start_col })
+    vim.cmd "normal! o"
+    vim.api.nvim_win_set_cursor(0, { end_row, end_col })
+  end
+
+  -- x = 可视模式, o = operator-pending 模式
+  for _, m in ipairs { "x", "o" } do
+    vim.keymap.set(m, "if", function() select(false) end, { desc = "Inside function (treesitter)" })
+    vim.keymap.set(m, "af", function() select(true) end, { desc = "Around function (treesitter)" })
+  end
+end
+
+setup_function_textobject()
+
