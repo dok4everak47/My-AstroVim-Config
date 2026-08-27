@@ -256,81 +256,63 @@ vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<CR>", { desc = "Toggle Aeria
 -- VS Code Cmd+Shift+O 风格搜索当前文件函数符号
 vim.keymap.set("n", "<leader>fs", function() Snacks.picker.lsp_symbols() end, { desc = "Go to symbol in current file (VS Code Cmd+Shift+O)" })
 
--- 原生 Treesitter 函数文本对象（if/af）
--- 不依赖 nvim-treesitter-textobjects，直接使用 vim.treesitter API
--- 适用于所有有 treesitter parser 的语言（Python、C++、Lua、TS 等）
-local function setup_function_textobject()
-  -- 从光标位置向上查找函数节点，返回 0-indexed 范围 (sr, sc, er, ec)
-  local function get_function_range(outer)
-    local node = vim.treesitter.get_node()
-    if not node then return nil end
+-- 原生 Treesitter 增量选择（<C-space> 扩展 / <bs> 收缩）
+-- nvim-treesitter `main` 分支移除了 incremental_selection 模块，这里用
+-- vim.treesitter API 重建：普通模式首次按选当前节点，重复按扩展到父节点；
+-- 可视模式下 <bs> 收缩到第一个命名子节点。函数文本对象（if/af/等）改由
+-- AstroNvim v6 自带的（已修复）nvim-treesitter-textobjects 提供。
+local function setup_incremental_selection()
+  local api = vim.api
+  local current_node = nil -- 跨次按键间追踪当前节点
 
-    while node do
-      local t = node:type()
-      -- 匹配各种语言的函数/方法/构造函数节点
-      if t:match "function" or t:match "method" or t:match "constructor" then
-        local sr, sc, er, ec = node:range()
-        if not outer then
-          -- 内部：尝试找到函数体 block
-          for i = 0, node:named_child_count() - 1 do
-            local child = node:named_child(i)
-            if child then
-              local ct = child:type()
-              if ct:match "block" or ct:match "body" or ct == "suite" or ct == "compound_statement" then
-                sr, sc, er, ec = child:range()
-                break
-              end
-            end
-          end
-        end
-        return sr, sc, er, ec
-      end
-      node = node:parent()
-    end
-    return nil
+  local function node_at_cursor()
+    local row, col = unpack(api.nvim_win_get_cursor(0))
+    return vim.treesitter.get_node { bufnr = 0, row = row - 1, col = col }
   end
 
-  local function select(outer)
-    local sr, sc, er, ec = get_function_range(outer)
-    if not sr then
-      vim.notify("No function at cursor", vim.log.levels.WARN)
-      return
-    end
-
-    -- node:range() 返回 0-indexed (sr, sc, er, ec)，ec 为排他（不含）
-    -- nvim_win_set_cursor 需要 1-indexed 行、0-indexed 列
-    local start_row = sr + 1
-    local start_col = sc
-
-    local end_row, end_col
+  local function select_node(node)
+    if not node then return end
+    current_node = node
+    local sr, sc, er, ec = node:range()
+    local mode = api.nvim_get_mode().mode
+    if mode ~= "v" and mode ~= "V" and mode ~= "\x16" then vim.cmd "normal! v" end
+    api.nvim_win_set_cursor(0, { sr + 1, sc })
+    vim.cmd "normal! o"
+    local end_col
     if ec > 0 then
-      end_row = er + 1
       end_col = ec - 1
     else
       -- ec == 0 表示范围结束在行首，最后一个字符在前一行末尾
-      end_row = er
-      end_col = math.max(#vim.fn.getline(er) - 1, 0)
+      end_col = #api.nvim_buf_get_lines(0, er, er + 1, false)[1] - 1
     end
-
-    -- 进入可视模式（如果当前不在）
-    -- 在 operator-pending 模式下，进入可视模式后挂起的 operator 会作用于选区
-    local mode = vim.api.nvim_get_mode().mode
-    if mode ~= "v" and mode ~= "V" and mode ~= "\x16" then
-      vim.cmd "normal! v"
-    end
-
-    -- 设置选区起点 -> 跳到另一端 -> 设置选区终点
-    vim.api.nvim_win_set_cursor(0, { start_row, start_col })
-    vim.cmd "normal! o"
-    vim.api.nvim_win_set_cursor(0, { end_row, end_col })
+    api.nvim_win_set_cursor(0, { er + 1, math.max(end_col, 0) })
   end
 
-  -- x = 可视模式, o = operator-pending 模式
-  for _, m in ipairs { "x", "o" } do
-    vim.keymap.set(m, "if", function() select(false) end, { desc = "Inside function (treesitter)" })
-    vim.keymap.set(m, "af", function() select(true) end, { desc = "Around function (treesitter)" })
+  local function expand()
+    local mode = api.nvim_get_mode().mode
+    local visual = mode == "v" or mode == "V" or mode == "\x16"
+    -- 普通模式，或无可追踪节点：从光标处最小节点开始
+    if not visual or not current_node then
+      local node = node_at_cursor()
+      if node then select_node(node) end
+      return
+    end
+    -- 可视模式且有追踪节点：扩展到父节点
+    local parent = current_node:parent()
+    if parent then select_node(parent) end
   end
+
+  local function shrink()
+    if not current_node then return end
+    if current_node:named_child_count() > 0 then
+      select_node(current_node:named_child(0))
+    end
+  end
+
+  vim.keymap.set({ "n", "x" }, "<C-space>", expand, { desc = "Treesitter: increment selection" })
+  vim.keymap.set("x", "<bs>", shrink, { desc = "Treesitter: decrement selection" })
 end
 
-setup_function_textobject()
+setup_incremental_selection()
+
 

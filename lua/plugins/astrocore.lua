@@ -19,6 +19,22 @@ return {
       highlighturl = true, -- highlight URLs at start
       notifications = true, -- enable notifications at start
     },
+    -- Treesitter 配置（AstroNvim v6：highlight/indent/auto_install/textobjects 由 AstroCore 默认提供）
+    -- 这里只补充默认之外需要安装的 parser；列表与 AstroCore 默认 ensure_installed 合并去重
+    treesitter = {
+      ensure_installed = {
+        "lua", "vim", "vimdoc", "query",
+        -- Web / TypeScript
+        "javascript", "typescript", "tsx", "jsdoc", "json", "jsonc",
+        "html", "css", "scss", "vue",
+        -- Elm
+        "elm",
+        -- config / data
+        "yaml", "toml", "markdown", "markdown_inline", "gitcommit", "bash", "regex",
+        -- C/C++/Python（C/C++ 在 polish.lua 有执行映射）
+        "c", "cpp", "python",
+      },
+    },
     -- Diagnostics configuration (for vim.diagnostics.config({...})) when diagnostics are on
     diagnostics = {
       virtual_text = true,
