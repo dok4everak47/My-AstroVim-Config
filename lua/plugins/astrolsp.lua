@@ -56,6 +56,9 @@ return {
     config = {
       -- clangd = { capabilities = { offsetEncoding = "utf-8" } },
       elmls = {
+        -- v4 走 vim.lsp.config / vim.lsp.enable（nvim 原生 LSP）
+        -- 显式指定 cmd，GUI 启动 PATH 缺 nix profile 也能拉起 LSP
+        cmd = { elm_bin "elm-language-server" },
         init_options = {
           -- 显式指定工具路径，即使 GUI 启动导致 PATH 缺少 nix profile 也能正常工作
           elmPath = elm_bin "elm",
@@ -65,16 +68,8 @@ return {
         },
       },
     },
-    -- customize how language servers are attached
-    handlers = {
-      -- a function without a key is simply the default handler, functions take two parameters, the server name and the configured options table for that server
-      -- function(server, opts) require("lspconfig")[server].setup(opts) end
-
-      -- the key is the server that is being setup with `lspconfig`
-      -- rust_analyzer = false, -- setting a handler to false will disable the set up of that language server
-      -- pyright = function(_, opts) require("lspconfig").pyright.setup(opts) end -- or a custom handler function can be passed
-      elmls = function(_, opts) require("lspconfig").elmls.setup(opts) end,
-    },
+    -- AstroLSP v4：默认 handler 即 vim.lsp.enable，servers 列表直接启用，
+    -- 旧的 lspconfig 手动 setup（v3 写法）已废弃且会导致 opts=nil 崩溃，故删除
     -- Configure buffer local auto commands to add when attaching a language server
     autocmds = {
       -- first key is the `augroup` to add the auto commands to (:h augroup)
