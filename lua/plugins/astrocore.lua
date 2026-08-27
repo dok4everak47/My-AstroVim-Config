@@ -25,7 +25,7 @@ return {
       ensure_installed = {
         "lua", "vim", "vimdoc", "query",
         -- Web / TypeScript
-        "javascript", "typescript", "tsx", "jsdoc", "json", "jsonc",
+        "javascript", "typescript", "tsx", "jsdoc", "json",
         "html", "css", "scss", "vue",
         -- Elm
         "elm",
