@@ -5,11 +5,20 @@
 -- NOTE: We highly recommend setting up the Lua Language Server (`:LspInstall lua_ls`)
 --       as this provides autocomplete and documentation while editing
 
--- 解析 nix-darwin 声明安装的 Elm 工具路径：
--- 优先取 PATH 中的可执行文件，找不到时（如 GUI 启动的 nvim）回退到系统 profile
+-- 解析 Elm 工具路径：优先取 devShell/direnv 激活的 PATH，再 fallback
+-- 2026-08-29：全局 elm 套件已从 nix-darwin 移除，改从项目 devShell 找
 local function elm_bin(name)
+  -- 1. 当前 PATH（direnv 激活时含项目 devShell 的 .direnv/bin）
   local path = vim.fn.exepath(name)
   if path ~= "" then return path end
+  -- 2. 当前目录 .direnv/bin（direnv 装的 nix profile 二进制）
+  local cwd = vim.fn.getcwd()
+  local direnv_path = cwd .. "/.direnv/bin/" .. name
+  if vim.fn.filereadable(direnv_path) == 1 then return direnv_path end
+  -- 3. 用户 nix profile
+  local user_path = "/Users/dok4ever/.nix-profile/bin/" .. name
+  if vim.fn.filereadable(user_path) == 1 then return user_path end
+  -- 4. 最后 fallback 到系统 profile（可能已不存在）
   return "/nix/var/nix/profiles/system/sw/bin/" .. name
 end
 

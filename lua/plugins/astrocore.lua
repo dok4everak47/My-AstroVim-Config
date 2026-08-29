@@ -111,5 +111,22 @@ return {
         ["<C-s>"] = { "<Cmd>w<CR>", desc = "Save" },
       },
     },
+    autocmds = {
+      -- 退出 nvim 前主动停 LSP（治 rust-analyzer 孤儿进程高温病根，2026-08-29）
+      -- 注意：astrocore 的 autocmds 键是分组名，每条必须显式写 event
+      vim_leave_pre = {
+        {
+          event = "VimLeavePre",
+          callback = function()
+            -- 拿到所有 LSP 客户端，逐个停
+            local clients = vim.lsp.get_clients()
+            for _, client in ipairs(clients) do
+              pcall(vim.lsp.stop_client, client, true) -- true = force
+            end
+          end,
+          desc = "退出前停所有 LSP 客户端（治孤儿进程）",
+        },
+      },
+    },
   },
 }

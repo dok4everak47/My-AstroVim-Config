@@ -14,6 +14,7 @@ return {
   { import = "astrocommunity.pack.typescript" },
   { import = "astrocommunity.pack.json" },
   { import = "astrocommunity.pack.html-css" },
+  -- Rust 开发已迁移到 VS Code（2026-08-29），不再引入 astrocommunity.pack.rust
   { import = "astrocommunity.colorscheme.cyberdream-nvim" },
   { import = "astrocommunity.git.mini-git" },
   { import = "astrocommunity.colorscheme.catppuccin" },

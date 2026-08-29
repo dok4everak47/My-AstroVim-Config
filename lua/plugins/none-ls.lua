@@ -20,9 +20,16 @@ return {
       -- ESLint diagnostics & code actions are provided by eslint-lsp,
       -- which is auto-configured by mason-lspconfig (not none-ls).
       null_ls.builtins.formatting.prettierd,
-      -- Elm 格式化（nix-darwin 声明安装的 elm-format 0.8.8）
+      -- Elm 格式化（2026-08-29：全局 elm 套件已移除，改从项目 devShell 找）
+      -- 优先 .direnv/bin（direnv 激活），fallback 系统 profile
       null_ls.builtins.formatting.elm_format.with {
         extra_args = { "--elm-version=0.19" },
+        command = function()
+          local cwd = vim.fn.getcwd()
+          local direnv_path = cwd .. "/.direnv/bin/elm-format"
+          if vim.fn.filereadable(direnv_path) == 1 then return direnv_path end
+          return vim.fn.exepath "elm-format"
+        end,
       },
     })
   end,
