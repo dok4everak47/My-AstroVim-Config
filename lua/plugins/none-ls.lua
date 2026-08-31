@@ -16,6 +16,9 @@ return {
     -- Only insert new sources, do not replace the existing ones
     -- (If you wish to replace, use `opts.sources = {}` instead of the `list_insert_unique` function)
     opts.sources = require("astrocore").list_insert_unique(opts.sources, {
+      -- Nix 格式化（2026-08-31：alejandra 已取代 nixpkgs-fmt）
+      -- 系统 profile 已装 alejandra（nix-darwin packages.nix），无需 Mason
+      null_ls.builtins.formatting.alejandra,
       -- TypeScript / JavaScript / web formatting (prettierd)
       -- ESLint diagnostics & code actions are provided by eslint-lsp,
       -- which is auto-configured by mason-lspconfig (not none-ls).
