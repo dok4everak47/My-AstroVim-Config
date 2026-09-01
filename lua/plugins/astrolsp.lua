@@ -59,6 +59,7 @@ return {
     servers = {
       -- "pyright"
       "elmls", -- Elm LSP（nix-darwin 已声明安装，无需 Mason）
+      "nil_ls", -- Nix LSP（nil，nix-darwin 已声明安装）
     },
     -- customize language server configuration options passed to `lspconfig`
     ---@diagnostic disable: missing-fields
