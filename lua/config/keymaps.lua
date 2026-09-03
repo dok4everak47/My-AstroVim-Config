@@ -117,12 +117,12 @@ local function workspace_symbols_or_grep()
   if supported then
     Snacks.picker.lsp_workspace_symbols()
   else
-    -- 降级：grep 搜光标词（可编辑）。传当前词作为初始搜索，避免空搜。
+    -- 降级：grep 搜光标词（可编辑）。search 字段预填当前词，避免空搜。
     local word = vim.fn.expand("<cword>")
     if word == "" then
       Snacks.picker.grep()
     else
-      Snacks.picker.grep(word)
+      Snacks.picker.grep({ search = word })
     end
   end
 end
