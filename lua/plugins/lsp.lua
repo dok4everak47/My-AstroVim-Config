@@ -1,6 +1,6 @@
 -- 语言服务器补充配置（原 AstroNvim astrolsp.lua 迁移）
--- 需要手动指定 cmd/init_options 的服务：elmls、nil_ls（nix-darwin/devShell 装，非 mason）
--- 注：lang.elm / lang.nix extras 已声明 elmls/nil_ls，这里覆盖 cmd 指向 nix/devShell 二进制
+-- 需要手动指定 cmd/init_options 的服务：elmls、nil_ls（项目 devShell 装，非 mason）
+-- 注：lang.elm / lang.nix extras 已声明 elmls/nil_ls，这里覆盖 cmd 指向 devShell 二进制
 
 -- Nix 工具路径解析（PATH → 当前目录 .direnv → 用户 nix profile → 系统 profile）
 -- GUI 启动的 nvim 从 launchd 继承的 PATH 不含 nix profile，必须显式给绝对路径
@@ -21,31 +21,47 @@ local function nix_bin(name)
   return "/run/current-system/sw/bin/" .. name
 end
 
+-- nil 只走 devShell（PATH / .direnv），不依赖全局系统 profile；
+-- 找不到返回 nil → 调用方应禁用 nil_ls，避免 ENOENT 报错
+local function nil_bin()
+  local path = vim.fn.exepath("nil")
+  if path ~= "" then
+    return path
+  end
+  local cwd = vim.fn.getcwd()
+  local direnv_path = cwd .. "/.direnv/bin/nil"
+  if vim.fn.filereadable(direnv_path) == 1 then
+    return direnv_path
+  end
+  return nil
+end
+
 return {
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        -- elmls：GUI 启动 PATH 常缺 nix profile，显式给 cmd + init_options
-        -- mason=false：elmls 不在 mason registry，避免 LazyVim 尝试 mason 安装
-        elmls = {
-          mason = false,
-          cmd = { nix_bin("elm-language-server") },
-          init_options = {
-            elmPath = nix_bin("elm"),
-            elmFormatPath = nix_bin("elm-format"),
-            elmTestPath = nix_bin("elm-test-rs"),
-            elmReviewPath = nix_bin("elm-review"),
-          },
+    opts = function(_, opts)
+      opts.servers = opts.servers or {}
+      -- elmls：GUI 启动 PATH 常缺 nix profile，显式给 cmd + init_options
+      -- mason=false：elmls 不在 mason registry，避免 LazyVim 尝试 mason 安装
+      opts.servers.elmls = {
+        mason = false,
+        cmd = { nix_bin("elm-language-server") },
+        init_options = {
+          elmPath = nix_bin("elm"),
+          elmFormatPath = nix_bin("elm-format"),
+          elmTestPath = nix_bin("elm-test-rs"),
+          elmReviewPath = nix_bin("elm-review"),
         },
-        -- nil_ls（Nix LSP）：系统 profile 已装，非 mason；GUI 启动 PATH 缺系统 profile，
-        -- 显式给绝对路径 cmd（/run/current-system/sw/bin/nil）
-        nil_ls = {
-          mason = false,
-          cmd = { nix_bin("nil") },
-        },
-      },
-    },
+      }
+      -- nil_ls：全局已删（2026-09），只走项目 devShell（direnv 激活的 PATH 或 .direnv/bin）；
+      -- 无 devShell 环境（如 /etc/nix-darwin）时禁用，避免 ENOENT
+      local nil_path = nil_bin()
+      if nil_path then
+        opts.servers.nil_ls = { mason = false, cmd = { nil_path } }
+      else
+        opts.servers.nil_ls = { mason = false, enabled = false }
+      end
+    end,
   },
   -- 关闭 nix 文件的 statix lint（statix 未全局安装，遵循 Nix 铁律：工具走 devShell；
   -- nil_ls 已提供诊断，statix 属可选 linter，避免打开 nix 文件报 ENOENT）
