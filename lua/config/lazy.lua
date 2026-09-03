@@ -27,7 +27,8 @@ require("lazy").setup({
       "LazyVim/LazyVim",
       import = "lazyvim.plugins",
       opts = {
-        colorscheme = "catppuccin",
+        -- Material Theme Darker 对齐 VS Code (关键字斜体 → Victor Mono 花体)
+        colorscheme = "material",
       },
     },
     -- 可选 extras（对齐原 AstroNvim 功能面）
