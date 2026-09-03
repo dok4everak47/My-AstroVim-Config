@@ -96,7 +96,13 @@ return {
       opts.completion.ghost_text = { enabled = true }
 
       -- 签名提示（blink 原生；LazyVim 默认 signature=false，开之）
-      opts.signature = { enabled = true }
+      opts.signature = opts.signature or {}
+      opts.signature.enabled = true
+      opts.signature.window = opts.signature.window or {}
+      -- 优先在光标下方弹出（默认 {'n','s'} 会向上盖住代码）
+      opts.signature.window.direction_priority = { "s", "n" }
+      -- 限制高度，避免大面积遮挡
+      opts.signature.window.max_height = 8
     end,
   },
 }
