@@ -102,9 +102,32 @@ lmap("<leader>fs", function()
 end, { desc = "Go to symbol in current file (VS Code Cmd+Shift+O)" })
 
 -- ── 全项目符号搜索（VS Code Cmd+T 风格）──
-lmap("<leader>fS", function()
-  Snacks.picker.lsp_workspace_symbols()
-end, { desc = "Go to symbol in workspace (VS Code Cmd+T)" })
+-- LSP 支持 workspace/symbol（TS/rust 等）→ 用 LSP 精确符号；
+-- 否则（nix/lua/elm/无 LSP）→ 降级为 grep 文本搜索（rg，跨文件，输入词即搜）。
+-- nix 的 nil / lua 的 lua_ls 均无 workspaceSymbolProvider，降级让 <leader>fS 始终可用。
+local function workspace_symbols_or_grep()
+  local clients = vim.lsp.get_clients({ bufnr = 0 })
+  local supported = false
+  for _, client in ipairs(clients) do
+    if client.supports_method and client.supports_method("workspace/symbol") then
+      supported = true
+      break
+    end
+  end
+  if supported then
+    Snacks.picker.lsp_workspace_symbols()
+  else
+    -- 降级：grep 搜光标词（可编辑）。传当前词作为初始搜索，避免空搜。
+    local word = vim.fn.expand("<cword>")
+    if word == "" then
+      Snacks.picker.grep()
+    else
+      Snacks.picker.grep(word)
+    end
+  end
+end
+
+lmap("<leader>fS", workspace_symbols_or_grep, { desc = "Workspace symbol search (LSP or grep fallback)" })
 
 -- ── LSP 跳转（AstroNvim 用 gi，LazyVim 默认用 gI；补 gi 兼容肌肉记忆）──
 map("n", "gi", vim.lsp.buf.implementation, { desc = "Goto Implementation" })
