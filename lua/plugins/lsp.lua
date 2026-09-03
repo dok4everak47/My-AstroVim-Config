@@ -44,4 +44,14 @@ return {
       },
     },
   },
+  -- 关闭 nix 文件的 statix lint（statix 未全局安装，遵循 Nix 铁律：工具走 devShell；
+  -- nil_ls 已提供诊断，statix 属可选 linter，避免打开 nix 文件报 ENOENT）
+  {
+    "mfussenegger/nvim-lint",
+    optional = true,
+    opts = function(_, opts)
+      opts.linters_by_ft = opts.linters_by_ft or {}
+      opts.linters_by_ft.nix = nil -- 移除 nix 的 statix，nil_ls 诊断已足够
+    end,
+  },
 }
