@@ -60,6 +60,16 @@ return {
   {
     "saghen/blink.cmp",
     opts = function(_, opts)
+      -- LuaSnip 引擎（extra 已注入 LuaSnip+friendly-snippets+vscode loader；
+      -- 覆盖内置 vim.snippet——0.12.4 上跳 $0 占位会 invalid-extmark 崩溃）
+      opts.snippets = opts.snippets or {}
+      opts.snippets.preset = "luasnip"
+      if opts.snippets.preset == "luasnip" then
+        opts.snippets.expand = function(snippet)
+          require("luasnip").lsp_expand(snippet)
+        end
+      end
+
       -- 默认 sources 基础上微调（保留 lsp/path/snippets/buffer 顺序）
       opts.sources = opts.sources or {}
       opts.sources.providers = vim.tbl_deep_extend("force", opts.sources.providers or {}, {

@@ -33,6 +33,7 @@ require("lazy").setup({
     -- 可选 extras（对齐原 AstroNvim 功能面）
     { import = "lazyvim.plugins.extras.editor.aerial" }, -- Aerial 大纲
     { import = "lazyvim.plugins.extras.editor.neo-tree" }, -- neo-tree 文件树
+    { import = "lazyvim.plugins.extras.coding.luasnip" }, -- LuaSnip 引擎 + friendly-snippets（blink 后端）
     { import = "lazyvim.plugins.extras.lang.elm" }, -- Elm (LSP/treesitter/format)
     { import = "lazyvim.plugins.extras.lang.nix" }, -- Nix (nil_ls/treesitter)
     { import = "lazyvim.plugins.extras.lang.python" }, -- Python (basedpyright/ruff/venv)
