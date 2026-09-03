@@ -22,7 +22,7 @@ return {
         },
       })
       opts.buffers = vim.tbl_deep_extend("force", opts.buffers or {}, {
-        follow_current_file = true,
+        follow_current_file = { enabled = true },
       })
     end,
   },
