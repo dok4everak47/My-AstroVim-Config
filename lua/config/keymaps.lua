@@ -101,6 +101,11 @@ lmap("<leader>fs", function()
   Snacks.picker.lsp_symbols()
 end, { desc = "Go to symbol in current file (VS Code Cmd+Shift+O)" })
 
+-- ── 全项目符号搜索（VS Code Cmd+T 风格）──
+lmap("<leader>fS", function()
+  Snacks.picker.lsp_workspace_symbols()
+end, { desc = "Go to symbol in workspace (VS Code Cmd+T)" })
+
 -- ── LSP 跳转（AstroNvim 用 gi，LazyVim 默认用 gI；补 gi 兼容肌肉记忆）──
 map("n", "gi", vim.lsp.buf.implementation, { desc = "Goto Implementation" })
 
