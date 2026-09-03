@@ -38,6 +38,7 @@ require("lazy").setup({
     { import = "lazyvim.plugins.extras.lang.python" }, -- Python (basedpyright/ruff/venv)
     { import = "lazyvim.plugins.extras.lang.clangd" }, -- C/C++ (clangd + clangd_extensions)
     { import = "lazyvim.plugins.extras.lang.typescript" }, -- TS/JS (vtsls)
+    { import = "lazyvim.plugins.extras.lang.rust" }, -- Rust (rustaceanvim + rust-analyzer, devShell 提供)
     { import = "lazyvim.plugins.extras.dap.core" }, -- 调试核心
     -- 本地用户插件
     { import = "plugins" },
