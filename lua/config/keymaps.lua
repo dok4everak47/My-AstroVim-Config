@@ -11,25 +11,25 @@ local lmap = function(lhs, rhs, opts)
 end
 
 
--- ── jk 退出插入模式（原 polish.lua：insert 模式 jk=Esc，普通 nvim 环境保存后退出）──
--- 注：VSCode Neovim 由 settings.json 的 vim.insertModeKeyBindingsNonRecursive 处理，
--- 此处只给真正的 nvim。
--- jk 退出插入模式：退出 + 强制保存 + 格式化
--- Lua 回调 + vim.schedule：stopinsert 真正离开 insert 后再 w! + format，
--- 避免字符串形式 <Esc>:w!<CR>... 与模式切换竞态导致保存/格式化丢失。
--- rust 文件：优先 cargo fmt（尊重 crate/rustfmt.toml，需所在目录向上能找到 Cargo.toml 且 cargo 在 PATH）；
--- 找不到 Cargo.toml / cargo 不在 PATH（devShell 未加载）/ 非 rust → LazyVim.format（conform）。
+-- ── jk 退出插入模式（原 polish.lua：insert 模式 jk=Esc）──
+-- 注：VSCode Neovim 由 settings.json 的 vim.insertModeKeyBindingsNonRecursive 处理，此处只给真正的 nvim。
+-- 顺序：stopinsert 离开 insert → vim.schedule → 清理残留 snippet → w! 强制保存 → 格式化
+-- （rust 且有 cargo → cargo fmt；其余 → LazyVim.format）。每步 pcall 包裹：出错不阻断后续，保证 w! 一定执行。
 map("i", "jk", function()
   vim.cmd("stopinsert")
   vim.schedule(function()
-    -- 清掉残留 snippet（若正处在展开的 snippet 占位中退出）。
-    -- 否则 active snippet 残留 → 之后再进 insert 按 Tab 会被当成“跳占位”→ 乱跳。
-    -- 对应 LazyVim 官方 <Esc> 的 LazyVim.cmp.actions.snippet_stop()（LuaSnip 版）。
-    local ls_ok, ls = pcall(require, "luasnip")
-    if ls_ok and ls.expand_or_jumpable() then
-      ls.unlink_current()
-    end
-    vim.cmd("w!")
+    -- 1) 清理残留 LuaSnip snippet（若有），避免退出后 Tab 被当成跳占位
+    pcall(function()
+      local ls_ok, ls = pcall(require, "luasnip")
+      if ls_ok and ls.expand_or_jumpable() then
+        ls.unlink_current()
+      end
+    end)
+
+    -- 2) 强制保存（核心，必须执行）
+    pcall(vim.cmd, "w!")
+
+    -- 3) 格式化：rust + cargo 可用 → cargo fmt；否则 LazyVim.format
     local ft = vim.bo.filetype
     if ft == "rust" and vim.fn.executable("cargo") == 1 and vim.fn.findfile("Cargo.toml", ".;") ~= "" then
       local dir = vim.fn.expand("%:p:h")
@@ -39,14 +39,13 @@ map("i", "jk", function()
             vim.notify("cargo fmt 失败 (exit " .. res.code .. "): " .. (res.stderr or ""):gsub("%s+$", ""), vim.log.levels.ERROR)
           end)
         else
-          -- cargo fmt 改了磁盘上的文件 → 重新载入当前 buffer（保留 undo）
           vim.schedule(function()
             vim.cmd("checktime")
           end)
         end
       end)
     else
-      LazyVim.format({ force = true })
+      pcall(LazyVim.format, { force = true })
     end
   end)
 end, { desc = "jk exit insert + force save + format (rust: cargo fmt)" })
