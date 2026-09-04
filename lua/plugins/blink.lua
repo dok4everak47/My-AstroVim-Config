@@ -1,60 +1,10 @@
 -- blink.cmp 补全（LazyVim 默认补全就是 blink，这里覆盖为 VS Code 风格）
 -- 原 AstroNvim lua/plugins/blink.lua 迁移
 -- LazyVim blink extra 默认 preset="enter"；我们保持 VS Code 习惯：
---   - Tab/CR = 接受（accept 后 Rust 自动补分号见下）
+--   - Tab 只做 snippet 占位导航
 --   - ghost_text 灰显预览（VS Code 标志）
 --   - 签名提示开（blink signature；替代 lsp_signature）
---   - 补全后 Rust 自动补 ';'
-
--- Rust 补分号启发式（原 blink.lua maybe_add_semicolon，逐字保留）
-local function maybe_add_semicolon()
-  if vim.bo.filetype ~= "rust" then
-    return
-  end
-  local row = vim.api.nvim_win_get_cursor(0)[1]
-  local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1]
-  if not line or line == "" then
-    return
-  end
-  local trimmed = line:match("^%s*(.-)%s*$")
-  if trimmed == "" then
-    return
-  end
-  local last = trimmed:sub(-1)
-  if last == ";" then
-    return
-  end
-  local ok_end = last:match("[%w_]") ~= nil
-    or last == ")"
-    or last == "]"
-    or last == '"'
-    or last == "'"
-  if not ok_end then
-    return
-  end
-  local first = trimmed:match("^(%a[%w_]*)")
-  local exclude = {
-    ["if"] = true, ["else"] = true, ["while"] = true, ["for"] = true, ["in"] = true,
-    loop = true, match = true, fn = true, impl = true, struct = true, enum = true,
-    trait = true, type = true, pub = true, unsafe = true, async = true, extern = true,
-    crate = true, where = true, move = true, as = true, dyn = true,
-  }
-  if first and exclude[first] then
-    return
-  end
-  local stripped = line:gsub("%s*$", "")
-  vim.api.nvim_buf_set_text(0, row - 1, #stripped, row - 1, #stripped, { ";" })
-end
-
-local function accept_with_semicolon(cmp)
-  if not cmp.is_menu_visible() then
-    return
-  end
-  cmp.accept({ callback = function()
-    vim.schedule(maybe_add_semicolon)
-  end })
-  return true
-end
+--   - 2026-09-04: 取消补全后 Rust 自动补 ';'（accept_with_semicolon 已移除）
 
 return {
   {
@@ -87,8 +37,9 @@ return {
       opts.keymap["<Tab>"] = { "snippet_forward", "fallback" }
       -- S-Tab：snippet 反向 / 反缩进
       opts.keymap["<S-Tab>"] = { "snippet_backward", "fallback" }
-      -- CR：菜单可见 -> 接受+补分号；否则换行（VS Code 同款：Enter 确定）
-      opts.keymap["<CR>"] = { accept_with_semicolon, "fallback" }
+      -- CR：菜单可见 -> 接受补全；否则换行（VS Code 同款：Enter 确定）。
+      -- 2026-09-04 移除 accept_with_semicolon：补全后不再自动补 ';'（用户不想要）。
+      opts.keymap["<CR>"] = { "accept", "fallback" }
 
       opts.completion = opts.completion or {}
       opts.completion.list = opts.completion.list or {}
