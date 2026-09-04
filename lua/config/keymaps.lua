@@ -14,7 +14,14 @@ end
 -- ── jk 退出插入模式（原 polish.lua：insert 模式 jk=Esc，普通 nvim 环境保存后退出）──
 -- 注：VSCode Neovim 由 settings.json 的 vim.insertModeKeyBindingsNonRecursive 处理，
 -- 此处只给真正的 nvim。
-map("i", "jk", "<Esc>:w<CR>", { desc = "jk exit insert + save" })
+map("i", "jk", function()
+  -- 退出 insert 后保存+格式化；schedule 确保 stopinsert 先生效
+  vim.cmd("stopinsert")
+  vim.schedule(function()
+    vim.cmd("w!")
+    LazyVim.format({ force = true })
+  end)
+end, { desc = "jk exit insert + force save + format" })
 
 -- ── 缓冲区切换（原 polish.lua setup_buffer_navigation + astrocore）──
 lmap("<leader>bn", "<cmd>bn<CR>", { desc = "Next buffer" })
