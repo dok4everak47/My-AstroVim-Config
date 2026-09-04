@@ -14,7 +14,42 @@ end
 -- ── jk 退出插入模式（原 polish.lua：insert 模式 jk=Esc，普通 nvim 环境保存后退出）──
 -- 注：VSCode Neovim 由 settings.json 的 vim.insertModeKeyBindingsNonRecursive 处理，
 -- 此处只给真正的 nvim。
-map("i", "jk", "<Esc>:w!<CR>:lua LazyVim.format({ force = true })<CR>", { desc = "jk exit insert + force save + format" })
+-- jk 退出插入模式：退出 + 强制保存 + 格式化
+-- Lua 回调 + vim.schedule：stopinsert 真正离开 insert 后再 w! + format，
+-- 避免字符串形式 <Esc>:w!<CR>... 与模式切换竞态导致保存/格式化丢失。
+-- rust 文件：优先 cargo fmt（尊重 crate/rustfmt.toml，需所在目录向上能找到 Cargo.toml 且 cargo 在 PATH）；
+-- 找不到 Cargo.toml / cargo 不在 PATH（devShell 未加载）/ 非 rust → LazyVim.format（conform）。
+map("i", "jk", function()
+  vim.cmd("stopinsert")
+  vim.schedule(function()
+    -- 清掉残留 snippet（若正处在展开的 snippet 占位中退出）。
+    -- 否则 active snippet 残留 → 之后再进 insert 按 Tab 会被当成“跳占位”→ 乱跳。
+    -- 对应 LazyVim 官方 <Esc> 的 LazyVim.cmp.actions.snippet_stop()（LuaSnip 版）。
+    local ls_ok, ls = pcall(require, "luasnip")
+    if ls_ok and ls.expand_or_jumpable() then
+      ls.unlink_current()
+    end
+    vim.cmd("w!")
+    local ft = vim.bo.filetype
+    if ft == "rust" and vim.fn.executable("cargo") == 1 and vim.fn.findfile("Cargo.toml", ".;") ~= "" then
+      local dir = vim.fn.expand("%:p:h")
+      vim.system({ "cargo", "fmt" }, { cwd = dir, text = true }, function(res)
+        if res.code ~= 0 then
+          vim.schedule(function()
+            vim.notify("cargo fmt 失败 (exit " .. res.code .. "): " .. (res.stderr or ""):gsub("%s+$", ""), vim.log.levels.ERROR)
+          end)
+        else
+          -- cargo fmt 改了磁盘上的文件 → 重新载入当前 buffer（保留 undo）
+          vim.schedule(function()
+            vim.cmd("checktime")
+          end)
+        end
+      end)
+    else
+      LazyVim.format({ force = true })
+    end
+  end)
+end, { desc = "jk exit insert + force save + format (rust: cargo fmt)" })
 
 -- ── 缓冲区切换（原 polish.lua setup_buffer_navigation + astrocore）──
 lmap("<leader>bn", "<cmd>bn<CR>", { desc = "Next buffer" })
