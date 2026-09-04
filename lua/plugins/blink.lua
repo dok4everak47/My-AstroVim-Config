@@ -81,11 +81,13 @@ return {
 
       -- VS Code 风格按键
       opts.keymap = opts.keymap or {}
-      -- Tab：菜单可见 -> 接受+补分号；snippet 活跃 -> 下一占位；否则缩进
-      opts.keymap["<Tab>"] = { accept_with_semicolon, "snippet_forward", "fallback" }
-      -- S-Tab：snippet 反向 / 上一项 / 反缩进
-      opts.keymap["<S-Tab>"] = { "snippet_backward", "select_prev", "fallback" }
-      -- CR：菜单可见 -> 接受+补分号；否则换行（VS Code 同款）
+      -- Tab：只做 snippet 占位导航（有活跃 snippet 跳下一占位；否则 fallback 缩进）。
+      -- 不绑 select_next：菜单里选候选统一用 ↑/↓ 或 Enter 确定（VS Code 里 Tab 选候选
+      -- 用户不想要，2026-09-04）。
+      opts.keymap["<Tab>"] = { "snippet_forward", "fallback" }
+      -- S-Tab：snippet 反向 / 反缩进
+      opts.keymap["<S-Tab>"] = { "snippet_backward", "fallback" }
+      -- CR：菜单可见 -> 接受+补分号；否则换行（VS Code 同款：Enter 确定）
       opts.keymap["<CR>"] = { accept_with_semicolon, "fallback" }
 
       opts.completion = opts.completion or {}
@@ -93,7 +95,10 @@ return {
       -- preselect 高亮但不自动插入（VS Code 行为）
       opts.completion.list.selection = { preselect = true, auto_insert = false }
       -- 灰显预览
-      opts.completion.ghost_text = { enabled = true }
+      -- ⚠️ 2026-09-04: ghost_text 与 LuaSnip 占位跳转冲突 (extmark 竞争,
+      -- 日志 mark.lua:82/35/136 崩溃 + for snippet Tab 跳转插入幽灵文本)。
+      -- 暂关, 观察 Tab 跳转是否恢复稳定。
+      -- opts.completion.ghost_text = { enabled = true }
 
       -- 签名提示（blink 原生；LazyVim 默认 signature=false，开之）
       opts.signature = opts.signature or {}
