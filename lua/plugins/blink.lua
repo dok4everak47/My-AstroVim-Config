@@ -33,45 +33,53 @@ return {
       opts.keymap = opts.keymap or {}
 
       -- Tab 自定义：snippet 占位导航 + “跳出右括号”
-      -- 行为（2026-09-04，用户需求：LSP 展开的 func(${1}) 填完参数按 Tab 应跳到 ) 后）：
-      --   - 在 snippet 内且有下一个占位符 → 正常跳下一占位（原 snippet_forward）
-      --   - 在 snippet 内但无下一个占位（= 在最后一个参数占位上）→ 光标移到当前
-      --     占位符节点 mark 的结束位置（天然=右括号后，正确处理嵌套括号），并结束 snippet
-      --   - 不在 snippet 内 → 返回 false，让 fallback 走默认（缩进）
-      -- 实测依据：LuaSnip 展开 func(${1:arg})，跳入占位符后 jumpable(1)=false（无下一占位），
-      -- 光标卡在 ) 内；占位符节点 mark 的 pos_end() 返回 {end_row, end_col}（= ) 后）。
+      -- 行为（2026-09-04）：在 snippet 内按 Tab：
+      --   1) 有下一占位符 → ls.jump(1) 正常跳
+      --   2) jump 后当前节点是 exitNode(type=8, LuaSnip 隐含的 "snippet 结束" 节点，
+      --      位于右括号后) → 光标移到该节点 mark 结束位（= 跳出括号），并结束会话
+      --   3) 不在 snippet → fallback（缩进）
+      -- 实测依据（2026-09-04）：Some($1) 空占位展开后 jumpable(1)=true，但 jump(1) 只把
+      -- current_nodes 移到隐含 exitNode，LuaSnip 不负责把光标移到 exit 位置 → 光标卡在 )
+      -- 内。必须检测 exitNode 后手动补移光标。
       opts.keymap["<Tab>"] = {
         function(cmp)
-          -- 菜单可见时不劫持 Tab（菜单选候选不归我们管；这里只处理 snippet 导航）
-          if cmp.is_menu_visible() then
+          local ls_ok, ls = pcall(require, "luasnip")
+          local sess_ok, session = pcall(require, "luasnip.session")
+          if not (ls_ok and sess_ok) then
             return false
           end
-          local ls_ok, ls = pcall(require, "luasnip")
-          if not ls_ok or not ls.in_snippet() then
-            return false -- 不在 snippet → 交给 fallback（缩进）
+          local buf = vim.api.nvim_get_current_buf()
+          local has_session = session.current_nodes[buf] ~= nil
+          local menu_visible = cmp.is_menu_visible()
+          -- 策略：菜单可见 + 已有会话 → 跳转（会话优先）；菜单可见 + 无会话 → 不劫持（正常补全选择）
+          if menu_visible and not has_session then
+            return false -- 补全菜单正常开着，无 snippet 会话 → 交给 fallback
           end
-          if ls.jumpable(1) then
-            -- 有下一占位：原 snippet_forward 行为
-            vim.schedule(function()
-              ls.jump(1)
-            end)
-            return true
+
+          if not has_session then
+            return false -- 无会话 → fallback（缩进）
           end
-          -- 无下一占位（最后一个参数上）→ 光标移到占位符结束位置（右括号后）并结束会话
+
           vim.schedule(function()
-            local ok_get, node = pcall(function()
-              local session = require("luasnip.session")
-              return session.current_nodes[vim.api.nvim_get_current_buf()]
-            end)
-            if ok_get and node and node.mark then
-              local ok_end, pos = pcall(function() return node.mark:pos_end() end)
-              if ok_end and pos and pos[1] ~= nil and pos[2] ~= nil then
-                -- pos = { end_row, end_col }，行转 1-based，列直接（0-based）
+            local jumped = false
+            if ls.jumpable(1) then
+              ls.jump(1)
+              jumped = true
+            end
+            if not ls.in_snippet() then
+              return -- 会话已自然结束
+            end
+            local node = session.current_nodes[buf]
+            if not node then
+              return
+            end
+            if node.type == 8 or not jumped then
+              local okp, pos = pcall(function() return node.mark:pos_end() end)
+              if okp and pos and pos[1] ~= nil and pos[2] ~= nil then
                 vim.api.nvim_win_set_cursor(0, { pos[1] + 1, pos[2] })
               end
+              pcall(ls.unlink_current)
             end
-            -- 结束 snippet 会话（光标已在括号外，安全）
-            pcall(ls.unlink_current)
           end)
           return true
         end,
