@@ -27,8 +27,8 @@ require("lazy").setup({
       "LazyVim/LazyVim",
       import = "lazyvim.plugins",
       opts = {
-        -- Material Theme Darker 对齐 VS Code (关键字斜体 → Victor Mono 花体)
-        colorscheme = "material",
+        -- Oxocarbon 主题 (2026-09-05; kanagawa-dragon → oxocarbon, IBM 碳黑风)
+        colorscheme = "oxocarbon",
       },
     },
     -- 可选 extras（对齐原 AstroNvim 功能面）
@@ -49,7 +49,7 @@ require("lazy").setup({
     lazy = false, -- 自定义插件默认立即加载（starter 同款；LazyVim 插件仍懒加载）
     version = false,
   },
-  install = { colorscheme = { "catppuccin", "habamax" } },
+  install = { colorscheme = { "oxocarbon", "habamax" } },
   checker = { enabled = false }, -- 关自动更新检查（保持可手动 :Lazy update）
   performance = {
     cache = { enabled = true },
