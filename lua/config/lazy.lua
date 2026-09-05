@@ -34,6 +34,7 @@ require("lazy").setup({
     -- 可选 extras（对齐原 AstroNvim 功能面）
     -- 注意: edgy 必须在 aerial 之前 import (edgy 注册布局, aerial 等窗口型插件依赖其顺序)
     { import = "lazyvim.plugins.extras.ui.edgy" }, -- Edgy 侧栏窗口管理 (2026-09-05; 先于 aerial)
+    { import = "lazyvim.plugins.extras.ui.treesitter-context" }, -- 顶部冻结当前函数/块上下文 (VS Code 粘滞滚动风, 2026-09-05)
     { import = "lazyvim.plugins.extras.editor.aerial" }, -- Aerial 大纲
     { import = "lazyvim.plugins.extras.editor.neo-tree" }, -- neo-tree 文件树
     { import = "lazyvim.plugins.extras.coding.luasnip" }, -- LuaSnip 引擎 + friendly-snippets（blink 后端）
