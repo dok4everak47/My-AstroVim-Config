@@ -49,7 +49,8 @@ return {
             return false
           end
           local buf = vim.api.nvim_get_current_buf()
-          local has_session = session.current_nodes[buf] ~= nil
+          local node = session.current_nodes[buf]
+          local has_session = node ~= nil
           local menu_visible = cmp.is_menu_visible()
           -- 策略：菜单可见 + 已有会话 → 跳转（会话优先）；菜单可见 + 无会话 → 不劫持（正常补全选择）
           if menu_visible and not has_session then
@@ -58,6 +59,27 @@ return {
 
           if not has_session then
             return false -- 无会话 → fallback（缩进）
+          end
+
+          -- 关键：光标必须真的落在当前占位符(node)的范围内，才属于"可跳的 snippet 会话"。
+          -- 若 Enter 换行/光标已移出占位符区域（node 的 mark 之外），snippet 会话残留，
+          -- 但仍应放行 Tab 做缩进，否则 Tab 被永久劫持成"跳占位"→ 无法缩进。
+          local pos = vim.api.nvim_win_get_cursor(0)
+          local row, col = pos[1] - 1, pos[2]
+          -- mark:pos_begin_end() 返回两个值 (begin, end); 不能包进单返回值函数
+          local okm, begin_pos, end_pos = pcall(node.mark.pos_begin_end, node.mark)
+          if okm and begin_pos and end_pos then
+            local in_node = row > begin_pos[1] or (row == begin_pos[1] and col >= begin_pos[2])
+            local in_node_end = row < end_pos[1] or (row == end_pos[1] and col <= end_pos[2])
+            if not (in_node and in_node_end) then
+              -- 光标不在当前占位符内 → 清理残留会话, 放行缩进
+              pcall(ls.unlink_current)
+              return false
+            end
+          else
+            -- mark 拿不到(文本被改/已删) → 清理会话放行
+            pcall(ls.unlink_current)
+            return false
           end
 
           vim.schedule(function()
