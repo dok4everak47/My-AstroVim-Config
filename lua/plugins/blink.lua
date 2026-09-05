@@ -109,6 +109,15 @@ return {
       opts.signature.window.direction_priority = { "s", "n" }
       -- 限制高度，避免大面积遮挡
       opts.signature.window.max_height = 8
+
+      -- 强制 Rust fuzzy 实现（2026-09-05）
+      -- 现象：frecency（按使用频率排序）完全无效。根因：blink 默认 prefer_rust_with_warning，
+      -- 启动时 ensure_downloaded 的异步决策未切到 rust（dylib 能 require、checksum 匹配，
+      -- 但 implementation_type 停在 lua），而 frecency 只在 rust 实现生效。
+      -- 修复：显式 prefer_rust，dylib 已就绪（target/release/libblink_cmp_fuzzy.dylib，
+      -- checksum 已验证匹配），加载失败会报错而不是静默降级。
+      opts.fuzzy = opts.fuzzy or {}
+      opts.fuzzy.implementation = "prefer_rust"
     end,
   },
 }
