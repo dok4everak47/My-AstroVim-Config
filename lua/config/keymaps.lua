@@ -54,12 +54,32 @@ end, { desc = "jk exit insert + force save + format (rust: cargo fmt)" })
 lmap("<leader>bn", "<cmd>bn<CR>", { desc = "Next buffer" })
 lmap("<leader>bp", "<cmd>bp<CR>", { desc = "Previous buffer" })
 lmap("<leader>bb", "<cmd>e #<CR>", { desc = "Switch to last buffer" })
--- 数字 1-9 快速切缓冲
+-- 数字 1-9 快速切缓冲: 按"列表顺序"而非"buffer 编号" (2026-09-05 修正)
+-- 用户以为 <leader>1 = 第 1 个打开的 buffer; vim 的 buffer N 是"编号 N"(编号会
+-- 随意增长如 9/18)。改成: 取当前 listed buffers 列表 (按打开顺序), <leader>1 切
+-- 列表第 1 个, <leader>2 切第 2 个...
+-- 注: 用裸 vim.keymap.set (map) 而非 lmap (Snacks.keymap.set): 数字键不打算
+-- 出现在 which-key 菜单, 裸注册的全局映射优先级高于 which-key 的 <Space> trigger,
+-- 不会被菜单拦截 (实测 lmap 注册的数字键被 which-key 吞掉, 按 <Space>1 无反应)。
 for i = 1, 9 do
-  lmap("<leader>" .. i, function()
-    vim.cmd("buffer " .. i)
+  map("n", "<leader>" .. i, function()
+    -- listed buffers (按 buffer 编号排序 = 打开顺序近似)
+    local listed = vim.tbl_filter(function(b)
+      return b.listed == 1 and b.name ~= ""
+    end, vim.fn.getbufinfo({ buflisted = 1 }))
+    local target = listed[i]
+    if target then
+      vim.cmd("buffer " .. target.bufnr)
+    end
   end, { desc = "Switch to buffer " .. i })
 end
+-- VS Code 风格切文件: Ctrl+Tab 下个 / Ctrl+Shift+Tab 上个 (不占 leader, 无 which-key 拦截)
+map("n", "<C-Tab>", function()
+  vim.cmd("bnext")
+end, { desc = "Next buffer (VS Code Ctrl+Tab)" })
+map("n", "<C-S-Tab>", function()
+  vim.cmd("bprevious")
+end, { desc = "Previous buffer (VS Code Ctrl+Shift+Tab)" })
 -- Alt+方向键切缓冲（非 leader，仍用 map）
 map("n", "<A-Left>", "<cmd>bp<CR>", { desc = "Previous buffer" })
 map("n", "<A-Right>", "<cmd>bn<CR>", { desc = "Next buffer" })
@@ -236,3 +256,21 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
   end,
   desc = "Stop all LSP clients on exit (fix orphan processes)",
 })
+
+-- ── 返回 Dashboard (2026-09-05) ──
+-- LazyVim 无现成"回 dashboard"键; <leader>D 空闲(查过 LazyVim + 用户 keymaps)。
+-- 注: snacks.dashboard.open() 内部会用 vim.cmd 操作当前 buffer, 若在不可修改的
+-- buffer (dashboard/neo-tree/help) 上触发会 E21。先确保当前 buffer 可改或已切走。
+map("n", "<leader>D", function()
+  -- 若当前 buffer 不可修改 (dashboard/neo-tree/help 等), 先建个临时可改 buffer 再开
+  if not vim.bo.modifiable then
+    pcall(vim.cmd, "enew")
+  end
+  local ok, err = pcall(function()
+    require("snacks.dashboard").open()
+  end)
+  if not ok then
+    vim.notify("Dashboard open failed: " .. tostring(err), vim.log.levels.ERROR)
+  end
+end, { desc = "Dashboard" })
+
