@@ -247,6 +247,11 @@ end
 -- ── 光标形状（原 polish.lua：insert 竖线）──
 vim.opt.guicursor = "n-v-c:block,i:ver50,ci:ver50,ve:ver50,o:block,a:blinkon100"
 
+-- ── 反斜杠 \ 启动命令行 (2026-09-05, 用户嫌 : 要按 Shift) ──
+-- \ 在 n/x/o/i 全空闲(实测), 回车键上方单手好按。映射 normal 下 \ → :。
+map("n", "\\", ":", { desc = "Command line (replaces :)" })
+map("x", "\\", ":", { desc = "Command line (replaces :)" })
+
 -- ── 退出前停 LSP（原 astrocore autocmds VimLeavePre，治孤儿进程）──
 vim.api.nvim_create_autocmd("VimLeavePre", {
   callback = function()
