@@ -60,3 +60,26 @@ vim.api.nvim_create_autocmd("FileType", {
 
 -- LSP 附加：codelens 刷新（原 astrolsp autocmds 迁移；由 astrolsp 处理，
 -- LazyVim 在 codelens.enabled=true 时自动刷新。此文件不再重复）
+
+-- 打开代码文件默认全部折叠 (2026-09-05)
+-- 用户需求: 打开文件不想每次手动按 zM, 希望默认全折叠看结构。
+-- 用 BufReadPost + defer: 等文件加载/LSP 折叠就绪后再 zM (expr foldexpr 需就绪)。
+-- 折衷: 进入文件即全折叠, 想展开按 zR/zo。只对真实文件 (可读 buffer), 排除 nofile。
+vim.api.nvim_create_autocmd("BufReadPost", {
+  callback = function()
+    local buf = vim.api.nvim_get_current_buf()
+    -- 排除无文件名/特殊 buffer
+    if vim.bo[buf].buftype ~= "" or vim.bo[buf].filetype == "" then
+      return
+    end
+    -- 延迟到折叠就绪 (LSP/treesitter foldexpr 需 attach 后)
+    vim.defer_fn(function()
+      if not vim.api.nvim_buf_is_valid(buf) then
+        return
+      end
+      pcall(vim.cmd, "silent! normal! zM")
+    end, 150)
+  end,
+  desc = "Fold all by default when opening code files",
+})
+
