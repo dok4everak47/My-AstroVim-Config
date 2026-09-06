@@ -73,11 +73,20 @@ return {
             return false
           end
 
-          -- 有会话: 跳 snippet 占位优先。光标在占位符内才跳; 不在则先试 tabout,
-          -- 仍不中 → 清残留会话放行 (缩进/fallback)。
+          -- 有会话: 跳 snippet 占位优先。
           if has_session then
             local pos = vim.api.nvim_win_get_cursor(0)
             local row, col = pos[1] - 1, pos[2]
+            -- exitNode(type=8)/0 是虚拟节点 (展开后会话刚建, current node 常停在 exit),
+            -- 没有可判的占位范围 → 直接跳下一占位, 不做范围检查。
+            if node.type == 8 or node.type == 0 then
+              vim.schedule(function()
+                if ls.jumpable(1) then
+                  ls.jump(1)
+                end
+              end)
+              return true
+            end
             local okm, begin_pos, end_pos = pcall(node.mark.pos_begin_end, node.mark)
             if okm and begin_pos and end_pos then
               local in_node = row > begin_pos[1] or (row == begin_pos[1] and col >= begin_pos[2])
