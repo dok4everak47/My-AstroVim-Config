@@ -23,7 +23,13 @@ return {
       -- 默认 sources 基础上微调（保留 lsp/path/snippets/buffer 顺序）
       opts.sources = opts.sources or {}
       opts.sources.providers = vim.tbl_deep_extend("force", opts.sources.providers or {}, {
-        snippets = { score_offset = 1 },
+        snippets = {
+          score_offset = 1,
+          opts = {
+            -- 列表项 label 旁显示 snippet description, 区分同名 snippet (如自定义 fn vs RA fn)
+            use_label_description = true,
+          },
+        },
         lsp = { score_offset = 0 },
         path = { score_offset = 2 },
         buffer = { score_offset = -3 },
