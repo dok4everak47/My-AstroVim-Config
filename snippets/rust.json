@@ -8,5 +8,77 @@
     "prefix": "let",
     "body": "let mut ${1:name} = ${2:value};$0",
     "description": "let mut·=后填值"
+  },
+  "if": {
+    "prefix": "if",
+    "body": [
+      "if ${1:cond} {",
+      "\t${2:body}$0",
+      "}"
+    ],
+    "description": "if·条件体"
+  },
+  "for": {
+    "prefix": "for",
+    "body": [
+      "for ${1:i} in ${2:iter} {",
+      "\t${3:body}$0",
+      "}"
+    ],
+    "description": "for·循环体"
+  },
+  "while": {
+    "prefix": "while",
+    "body": [
+      "while ${1:cond} {",
+      "\t${2:body}$0",
+      "}"
+    ],
+    "description": "while·条件体"
+  },
+  "match": {
+    "prefix": "match",
+    "body": [
+      "match ${1:expr} {",
+      "\t${2:arm} => ${3:val},$0",
+      "}"
+    ],
+    "description": "match·分支"
+  },
+  "loop": {
+    "prefix": "loop",
+    "body": [
+      "loop {",
+      "\t${1:body}$0",
+      "}"
+    ],
+    "description": "loop·循环体"
+  },
+  "impl": {
+    "prefix": "impl",
+    "body": [
+      "impl ${1:Type} {",
+      "\t${2:body}$0",
+      "}"
+    ],
+    "description": "impl·实现块"
+  },
+  "struct": {
+    "prefix": "struct",
+    "body": [
+      "struct ${1:Name} {",
+      "\t${2:field}: ${3:Type},$0",
+      "}"
+    ],
+    "description": "struct·结构体"
+  },
+  "enum": {
+    "prefix": "enum",
+    "body": [
+      "enum ${1:Name} {",
+      "\t${2:Variant},$0",
+      "}"
+    ],
+    "description": "enum·枚举"
   }
 }
