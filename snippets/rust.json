@@ -6,6 +6,11 @@
   },
   "let": {
     "prefix": "let",
+    "body": "let ${1:name} = ${2:value};$0",
+    "description": "let·=后填值"
+  },
+  "let mut": {
+    "prefix": "let mut",
     "body": "let mut ${1:name} = ${2:value};$0",
     "description": "let mut·=后填值"
   },
