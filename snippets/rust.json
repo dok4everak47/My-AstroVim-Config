@@ -3,14 +3,5 @@
     "prefix": "format!",
     "body": "format!(\"$1\", $2)$0",
     "description": "format!"
-  },
-  "fn": {
-    "prefix": "fn",
-    "body": [
-      "fn ${1:name}(${2:args})$3 {",
-      "\t${4:body}",
-      "}"
-    ],
-    "description": "fn·Tab停)后"
   }
 }

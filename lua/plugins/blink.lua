@@ -58,58 +58,75 @@ return {
           local node = session.current_nodes[buf]
           local has_session = node ~= nil
           local menu_visible = cmp.is_menu_visible()
-          -- 策略：菜单可见 + 已有会话 → 跳转（会话优先）；菜单可见 + 无会话 → 不劫持（正常补全选择）
-          if menu_visible and not has_session then
-            return false -- 补全菜单正常开着，无 snippet 会话 → 交给 fallback
-          end
 
-          if not has_session then
-            return false -- 无会话 → fallback（缩进）
-          end
-
-          -- 关键：光标必须真的落在当前占位符(node)的范围内，才属于"可跳的 snippet 会话"。
-          -- 若 Enter 换行/光标已移出占位符区域（node 的 mark 之外），snippet 会话残留，
-          -- 但仍应放行 Tab 做缩进，否则 Tab 被永久劫持成"跳占位"→ 无法缩进。
-          local pos = vim.api.nvim_win_get_cursor(0)
-          local row, col = pos[1] - 1, pos[2]
-          -- mark:pos_begin_end() 返回两个值 (begin, end); 不能包进单返回值函数
-          local okm, begin_pos, end_pos = pcall(node.mark.pos_begin_end, node.mark)
-          if okm and begin_pos and end_pos then
-            local in_node = row > begin_pos[1] or (row == begin_pos[1] and col >= begin_pos[2])
-            local in_node_end = row < end_pos[1] or (row == end_pos[1] and col <= end_pos[2])
-            if not (in_node and in_node_end) then
-              -- 光标不在当前占位符内 → 清理残留会话, 放行缩进
-              pcall(ls.unlink_current)
-              return false
+          -- Tab-out helper (2026-09-05): 光标右侧是自动补的配对符 (引号/小括号/方括号)
+          -- 时右移跳出。⚠️ 排除 { } — 块边界不该被 Tab 跳出 (fn snippet 的 $3
+          -- 停靠依赖光标停在 ) { 之间)。
+          local function try_tabout()
+            local p = vim.api.nvim_win_get_cursor(0)
+            local l = vim.api.nvim_get_current_line()
+            local r = l:sub(p[2] + 1, p[2] + 1)
+            if r == '"' or r == "'" or r == ")" or r == "]" then
+              vim.api.nvim_win_set_cursor(0, { p[1], p[2] + 1 })
+              return true
             end
-          else
-            -- mark 拿不到(文本被改/已删) → 清理会话放行
+            return false
+          end
+
+          -- 有会话: 跳 snippet 占位优先。光标在占位符内才跳; 不在则先试 tabout,
+          -- 仍不中 → 清残留会话放行 (缩进/fallback)。
+          if has_session then
+            local pos = vim.api.nvim_win_get_cursor(0)
+            local row, col = pos[1] - 1, pos[2]
+            local okm, begin_pos, end_pos = pcall(node.mark.pos_begin_end, node.mark)
+            if okm and begin_pos and end_pos then
+              local in_node = row > begin_pos[1] or (row == begin_pos[1] and col >= begin_pos[2])
+              local in_node_end = row < end_pos[1] or (row == end_pos[1] and col <= end_pos[2])
+              if in_node and in_node_end then
+                -- 光标在占位符内 → 跳下一占位 (tabout 不抢)
+                vim.schedule(function()
+                  local jumped = false
+                  if ls.jumpable(1) then
+                    ls.jump(1)
+                    jumped = true
+                  end
+                  if not ls.in_snippet() then
+                    return
+                  end
+                  local node = session.current_nodes[buf]
+                  if not node then
+                    return
+                  end
+                  if node.type == 8 or not jumped then
+                    local okp, p = pcall(function() return node.mark:pos_end() end)
+                    if okp and p and p[1] ~= nil and p[2] ~= nil then
+                      vim.api.nvim_win_set_cursor(0, { p[1] + 1, p[2] })
+                    end
+                    pcall(ls.unlink_current)
+                  end
+                end)
+                return true
+              end
+            end
+            -- 光标不在占位符内: 试 tabout; 不中 → 清会话放行
+            if try_tabout() then
+              return true
+            end
             pcall(ls.unlink_current)
             return false
           end
 
-          vim.schedule(function()
-            local jumped = false
-            if ls.jumpable(1) then
-              ls.jump(1)
-              jumped = true
-            end
-            if not ls.in_snippet() then
-              return -- 会话已自然结束
-            end
-            local node = session.current_nodes[buf]
-            if not node then
-              return
-            end
-            if node.type == 8 or not jumped then
-              local okp, pos = pcall(function() return node.mark:pos_end() end)
-              if okp and pos and pos[1] ~= nil and pos[2] ~= nil then
-                vim.api.nvim_win_set_cursor(0, { pos[1] + 1, pos[2] })
-              end
-              pcall(ls.unlink_current)
-            end
-          end)
-          return true
+          -- 无会话: tabout (跳出自动补配对符) 优先于 fallback; 菜单开着也生效
+          if try_tabout() then
+            return true
+          end
+
+          -- 菜单可见 + 无会话 → 不劫持 (正常补全选择)
+          if menu_visible then
+            return false
+          end
+
+          return false -- 无会话无菜单 → fallback（缩进）
         end,
         "fallback",
       }
