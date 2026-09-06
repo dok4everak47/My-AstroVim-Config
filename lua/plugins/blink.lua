@@ -77,13 +77,71 @@ return {
           if has_session then
             local pos = vim.api.nvim_win_get_cursor(0)
             local row, col = pos[1] - 1, pos[2]
-            -- exitNode(type=8)/0 是虚拟节点 (展开后会话刚建, current node 常停在 exit),
-            -- 没有可判的占位范围 → 直接跳下一占位, 不做范围检查。
+            -- exitNode(type=8)/0 是虚拟节点 (展开后会话刚建或编辑后 current node
+            -- 回退到 exit)。不能直接 jump (exit.next=nil → jump 会清会话 = 没反应)。
+            -- 改为: 遍历 snippet 的 insertNode, 找光标所在/之后的占位符设为 current,
+            -- 再 jump — 光标在最后占位时 jump 不到 → 光标移到 snippet 末尾 (分号后)。
             if node.type == 8 or node.type == 0 then
               vim.schedule(function()
-                if ls.jumpable(1) then
-                  ls.jump(1)
+                local snip = node.parent and node.parent.snippet
+                if not snip then
+                  pcall(ls.unlink_current)
+                  return
                 end
+                -- 递归收集所有 insertNode (type=2)
+                local inserts = {}
+                local function collect(n)
+                  for _, child in ipairs(n.nodes or {}) do
+                    if child.type == 2 then
+                      inserts[#inserts + 1] = child
+                    elseif child.nodes then
+                      collect(child)
+                    end
+                  end
+                end
+                collect(snip)
+                if #inserts == 0 then
+                  pcall(ls.unlink_current)
+                  return
+                end
+                -- 找光标所在占位符 (row/col 0-based)
+                local pos = vim.api.nvim_win_get_cursor(0)
+                local row, col = pos[1] - 1, pos[2]
+                local target
+                for _, ins in ipairs(inserts) do
+                  local okm, b, e = pcall(ins.mark.pos_begin_end, ins.mark)
+                  if okm and b and e then
+                    local in_b = row > b[1] or (row == b[1] and col >= b[2])
+                    local in_e = row < e[1] or (row == e[1] and col <= e[2])
+                    if in_b and in_e then
+                      target = ins
+                      break
+                    end
+                  end
+                end
+                -- 手动把 current node 设为光标所在占位, 然后正常 jump
+                if target then
+                  session.current_nodes[buf] = target
+                  vim.schedule(function()
+                    if ls.jumpable(1) then
+                      ls.jump(1)
+                      return
+                    end
+                    -- 最后占位无下一跳: 光标移到 snippet 末尾收尾
+                    local okp, p = pcall(function() return snip.mark:pos_end() end)
+                    if okp and p and p[1] ~= nil and p[2] ~= nil then
+                      vim.api.nvim_win_set_cursor(0, { p[1] + 1, p[2] })
+                    end
+                    pcall(ls.unlink_current)
+                  end)
+                  return
+                end
+                -- 光标不在任何占位内 (如占位后/分号前) → 移到 snippet 末尾收尾
+                local okp, p = pcall(function() return snip.mark:pos_end() end)
+                if okp and p and p[1] ~= nil and p[2] ~= nil then
+                  vim.api.nvim_win_set_cursor(0, { p[1] + 1, p[2] })
+                end
+                pcall(ls.unlink_current)
               end)
               return true
             end
@@ -99,19 +157,22 @@ return {
                     ls.jump(1)
                     jumped = true
                   end
-                  if not ls.in_snippet() then
-                    return
-                  end
                   local node = session.current_nodes[buf]
-                  if not node then
-                    return
-                  end
-                  if node.type == 8 or not jumped then
-                    local okp, p = pcall(function() return node.mark:pos_end() end)
-                    if okp and p and p[1] ~= nil and p[2] ~= nil then
-                      vim.api.nvim_win_set_cursor(0, { p[1] + 1, p[2] })
+                  -- 判断是否已到 snippet 末尾: 无下一占位可跳 / current 是 exitNode /
+                  -- 会话已结束。此时光标应落在 snippet 末尾 (分号后)。
+                  local at_end = not ls.in_snippet() or not jumped
+                    or (node and node.type == 8)
+                  if at_end then
+                    -- 用 node 链找 snippet, 光标移到 snippet mark 结束位
+                    local snip = node and node.parent and node.parent.snippet
+                    if snip and snip.mark then
+                      local okp, p = pcall(function() return snip.mark:pos_end() end)
+                      if okp and p and p[1] ~= nil and p[2] ~= nil then
+                        vim.api.nvim_win_set_cursor(0, { p[1] + 1, p[2] })
+                      end
                     end
                     pcall(ls.unlink_current)
+                    return
                   end
                 end)
                 return true

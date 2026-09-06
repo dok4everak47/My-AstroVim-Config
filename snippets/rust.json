@@ -3,5 +3,10 @@
     "prefix": "format!",
     "body": "format!(\"$1\", $2)$0",
     "description": "format!"
+  },
+  "let": {
+    "prefix": "let",
+    "body": "let mut ${1:name} = ${2:value};$0",
+    "description": "let mut·=后填值"
   }
 }
