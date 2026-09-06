@@ -30,7 +30,30 @@ return {
             use_label_description = true,
           },
         },
-        lsp = { score_offset = 0 },
+        lsp = {
+          score_offset = 0,
+          -- 屏蔽 RA (rust-analyzer) 的重复关键字 snippet 项, 只留自定义 vscode snippet。
+          -- 只 block 已自定义覆盖的: if/let/for/while/match/loop/impl/struct/enum。
+          -- ⚠️ else 不 block — 无自定义 else。fn 已 block: 自定义 fn 加回 (2026-09-06), 只留自定义。
+          -- 2026-09-06
+          transform_items = function(_, items)
+            local blocked = {
+              ["if"] = true, ["let"] = true, ["let mut"] = true, ["for"] = true,
+              ["while"] = true, ["match"] = true, ["loop"] = true, ["impl"] = true,
+              ["struct"] = true, ["enum"] = true, ["fn"] = true,
+            }
+            local ret = {}
+            for _, item in ipairs(items) do
+              local is_snippet = item.kind == vim.lsp.protocol.CompletionItemKind.Snippet
+              local is_keyword = item.kind == vim.lsp.protocol.CompletionItemKind.Keyword
+              -- RA 的关键字项 kind 可能是 Snippet 或 Keyword, 两者都滤
+              if not ((is_snippet or is_keyword) and blocked[item.label]) then
+                ret[#ret + 1] = item
+              end
+            end
+            return ret
+          end,
+        },
         path = { score_offset = 2 },
         buffer = { score_offset = -3 },
       })

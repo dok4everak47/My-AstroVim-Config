@@ -85,5 +85,14 @@
       "}"
     ],
     "description": "enum·枚举"
+  },
+  "fn": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:name}(${2:args}) -> ${3:ret} {",
+      "\t${4:body}",
+      "}"
+    ],
+    "description": "fn·name→参数→返回→体"
   }
 }
